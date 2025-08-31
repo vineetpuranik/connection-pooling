@@ -29,3 +29,39 @@ void* BlockingQueue::popleft() {
 
     return conn;
 }
+
+QueueNode* BlockingQueue::append(void* connection) {
+    // if connection is null pointer then return null pointer
+    if (connection == nullptr) {
+        return nullptr;
+    }
+
+    // if size is equal to max size then return null pointer
+    if (size == maxSize) {
+        return nullptr;
+    }
+
+
+    // create a new QueueNode
+    QueueNode* node = new QueueNode;
+    node->connection = connection;
+    node->next = nullptr;
+
+    // if queue size is 0 then set head and tail to be the new QueueNode
+    if (size == 0) {
+        head = node;
+        tail = node;
+    }
+    
+    // if queue size is > 0 then set tail.next = new QueueNode and update tail to new QueueNode
+    else {
+        tail->next = node;
+        tail = node;
+    }
+    
+
+    // increment the size
+    size++;
+
+    return node;
+}
