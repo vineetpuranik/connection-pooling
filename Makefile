@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra
+CXXFLAGS = -std=c++17 -Wall -Wextra -pthread
 
 # build test binary
 test: BlockingQueue/tests/BlockingQueueTest.cpp BlockingQueue/BlockingQueue.cpp
