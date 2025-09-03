@@ -1,45 +1,56 @@
 #include <iostream>
+#include <thread>
+#include <vector>
+#include <chrono>
 #include <cstdint>
 #include "../BlockingQueue.h"   // include your queue
 
+void producer(BlockingQueue& queue, int id, int startValue, int count) {
+    for (int i = 0; i < count; i++) {
+        int value = startValue + i;
+        if (queue.append((void*)(intptr_t)value) == nullptr) {
+            std::cout << "[Producer " << id << "] Queue full, failed to insert " << value << std::endl;
+        } else {
+            std::cout << "[Producer " << id << "] Inserted " << value << std::endl;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // simulate work
+    }
+}
+
+void consumer(BlockingQueue& queue, int id, int pops) {
+    for (int i = 0; i < pops; i++) {
+        void* conn = queue.popleft();  // blocks if empty
+        int value = (int)(intptr_t)conn;
+        std::cout << "    [Consumer " << id << "] Popped " << value << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(150)); // simulate processing
+    }
+}
+
 int main() {
-    // Create a blocking queue with capacity 3
-    BlockingQueue queue;
-    queue.size = 0;
-    queue.maxSize = 3;
-    queue.head = nullptr;
-    queue.tail = nullptr;
+    BlockingQueue queue(5);  // small capacity to trigger contention
 
-    std::cout << "=== Testing BlockingQueue ===" << std::endl;
+    std::cout << "=== Multithreaded BlockingQueue Test ===" << std::endl;
 
-    // Append a few "connections" (using integers casted to void* for now)
-    queue.append((void*)1);
-    queue.append((void*)2);
-    queue.append((void*)3);
+    std::vector<std::thread> threads;
 
-    std::cout << "Queue size after 3 appends: " << queue.size << std::endl;
-
-    // Try appending beyond maxSize
-    auto node = queue.append((void*)4);
-    if (node == nullptr) {
-        std::cout << "Append rejected at max capacity (good)" << std::endl;
+    // Launch 5 producers (total 25 items)
+    for (int i = 0; i < 5; i++) {
+        threads.emplace_back(producer, std::ref(queue), i, i * 100, 5);
     }
 
-    // Pop elements one by one
-    void* conn1 = queue.popleft();
-    std::cout << "Popped: " << (int)(intptr_t)conn1 << " | size: " << queue.size << std::endl;
+    // Launch 10 consumers, but each does only 2-3 pops so total = 25
+    int popsPerConsumer[10] = {3,3,3,3,3,2,2,2,2,2};  
 
-    void* conn2 = queue.popleft();
-    std::cout << "Popped: " << (int)(intptr_t)conn2 << " | size: " << queue.size << std::endl;
-
-    void* conn3 = queue.popleft();
-    std::cout << "Popped: " << (int)(intptr_t)conn3 << " | size: " << queue.size << std::endl;
-
-    // Pop from empty queue
-    void* conn4 = queue.popleft();
-    if (conn4 == nullptr) {
-        std::cout << "Correctly returned nullptr on empty queue" << std::endl;
+    for (int i = 0; i < 10; i++) {
+    threads.emplace_back(consumer, std::ref(queue), i, popsPerConsumer[i]);
     }
 
+
+    // Join all threads
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    std::cout << "=== Test Complete ===" << std::endl;
     return 0;
 }
